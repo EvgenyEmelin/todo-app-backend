@@ -1,12 +1,11 @@
 from contextlib import asynccontextmanager
-from typing import Annotated
-from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy import select
+
+from app.db.session import engine
+from app.models.base import Base
 
 
 @asynccontextmanager
@@ -15,64 +14,13 @@ async def lifespan(_: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_methods=["*"], allow_origins=["http://localhost:3000"], allow_headers=["*"])
 
-DATABASE_URL = 'postgresql+psycopg://postgres:postgres@127.0.0.1:5432/postgres'
+app.add_middleware(
+    CORSMiddleware,
+    allow_methods=["*"],
+    allow_origins=["http://localhost:3000"],
+    allow_headers=["*"])
 
-engine = create_engine(DATABASE_URL)
-
-SessionLocal = sessionmaker(bind=engine,expire_on_commit=False)
-
-
-class Base(DeclarativeBase):
-    id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid4()))
-
-class TaskORM(Base):
-    __tablename__ = "tasks"
-
-    title: Mapped[str]
-    completed: Mapped[bool] = mapped_column(default=False)
-
-class CategoryORM(Base):
-    __tablename__ = "categories"
-
-    name: Mapped[str]
-
-
-class TaskSchema(BaseModel):
-    id: str
-    title: str
-    completed: bool
-
-class TaskCreateSchema(BaseModel):
-    title: str
-    completed: bool = False
-
-class TaskUpdateSchema(BaseModel):
-    title: str | None = None
-    completed: bool | None = None
-
-class CategoriesSchema(BaseModel):
-    id: str
-    name: str
-
-class CategoriesCreateSchema(BaseModel):
-    name: str
-
-class CategoryUpdateSchema(CategoriesCreateSchema):
-    pass
-
-
-categories: list[CategoriesSchema] = []
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-DbSession = Annotated[Session, Depends(get_db)]
 
 def task_to_model(task_orm: TaskORM) -> TaskSchema:
     return TaskSchema(id=task_orm.id, title=task_orm.title, completed=task_orm.completed)
