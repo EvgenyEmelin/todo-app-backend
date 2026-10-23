@@ -1,5 +1,3 @@
-
-
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.dependencies import get_task_service
@@ -18,7 +16,7 @@ def create_task(payload: TaskCreateSchema, task_service: TaskService = Depends(g
 
 
 
-@router.patch("/{task_id}", status_code=status.HTTP_201_CREATED)
+@router.patch("/{task_id}")
 def update_task(task_id: str,
                 payload: TaskUpdateSchema,
                 task_service: TaskService = Depends(get_task_service)
